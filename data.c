@@ -108,9 +108,9 @@ static void __scan_nodes(struct node **node)
 	if( (*node) != NULL)
 	{
 		__scan_nodes( &(*node)->left);
-		if( (*node)->last_seen == 0)
+		if( (*node)->last_seen == 0 && (*node)->deleted == 0 )
 		{
-			printf("delete node %u %u\n", (*node)->addr,(*node)->last_seen);
+			/*printf("delete node %u %u\n", (*node)->addr,(*node)->last_seen);*/
 			pthread_mutex_lock(&(*node)->mutex);
 			(*node)->deleted = 1;
 			pthread_mutex_unlock(&(*node)->mutex);
@@ -118,7 +118,7 @@ static void __scan_nodes(struct node **node)
 			pthread_mutex_lock(&(*node)->mutex);
 			(*node)->last_seen--;
 			pthread_mutex_unlock(&(*node)->mutex);
-			printf("last seen %u -1 for %u\n",(*node)->last_seen,(*node)->addr);
+			/*printf("last seen %u -1 for %u\n",(*node)->last_seen,(*node)->addr);*/
 		}
 		__scan_nodes( &(*node)->right);	
 	}

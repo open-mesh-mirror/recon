@@ -19,9 +19,8 @@
 #define ADDR_STR_LEN 16
 #define PACKET_FIELDS 5
 
-void *node_server (void *notused)
+void *node_server (void *srv_addr)
 {
-	char *srv_addr = "192.168.35.155";
 	char recive_dgram[MAXCHAR];
 	char addr_str[ADDR_STR_LEN];
 	
@@ -34,11 +33,11 @@ void *node_server (void *notused)
 	memset( &server, 0, sizeof (server));
 	server.sin_family = AF_INET;
 	server.sin_port = htons(PORT);
-	inet_pton(AF_INET, srv_addr,&server.sin_addr);
+	inet_pton(AF_INET, (char *)srv_addr,&server.sin_addr);
 
 	if(server.sin_addr.s_addr == INADDR_NONE)
 	{
-		printf("invalid adress %s", srv_addr);
+		printf("invalid adress %s", (char *) srv_addr);
 		exit(EXIT_FAILURE);
 	}
 
@@ -75,7 +74,7 @@ void *node_server (void *notused)
 			memmove(&orig,(unsigned int*)&recive_dgram[i*PACKET_FIELDS],4);
 			handle_node(orig,client.sin_addr.s_addr,(unsigned char)recive_dgram[i*PACKET_FIELDS+4]);		
 		}
-//		print_data();
+		/*print_data();*/
 	}
 	close(sock);
 	return NULL;
@@ -85,8 +84,14 @@ int main(int argc, char *argv[])
 {
 	pthread_t thread_node_server;
 	pthread_t thread_node_cleaner;
+
+	if(argc < 2)
+	{
+		fprintf(stderr,"Usage: recon <ip>\n");
+		return(EXIT_FAILURE);
+	}
 	
-	pthread_create(&thread_node_server, NULL, &node_server, NULL);
+	pthread_create(&thread_node_server, NULL, &node_server, argv[1]);
 	pthread_create(&thread_node_cleaner, NULL, &node_cleaner, NULL);
 	fprintf( stderr, "main: thread-id: %u\n",(unsigned int) pthread_self());
 	fprintf( stderr, "main: run node_server thread-id: %u\n", (unsigned int)thread_node_server);
