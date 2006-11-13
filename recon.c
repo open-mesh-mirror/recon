@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <pthread.h>
 #include "data.h"
 
 #define MAXCHAR 4096
@@ -83,14 +83,54 @@ void *node_server (void *srv_addr)
 	return NULL;
 }
 
+/*char prepare_message( struct node *node)*/
+/*{*/
+	/*struct neighbour *neigh;*/
+	
+	/*if(root_node != NULL)*/
+	/*{*/
+		/*prepare_message(node->left);*/
+		/*for(neigh = node->neighbour;neigh != NULL; neigh = neigh->next)*/
+		/*{*/
+
+		/*}*/
+		/*prepare_message(node->right);	*/
+	/*}*/
+	/*return;*/
+/*}*/
+
+
+static void *recon_server(void *arg)
+{
+	int con, numbytes;
+	char message[] = "";
+
+	con = *((int*) arg);
+	free(arg);
+	pthread_detach(pthread_self());
+
+	numbytes = sizeof( message );
+	for( ; ; )
+	{
+		if(write(con,message,numbytes) != numbytes)
+		{
+			close(con);
+			return(NULL);
+		}
+	}
+	close( con );
+	return( NULL );
+}
+
 int main(int argc, char *argv[])
 {
 	pthread_t thread_node_server;
 	pthread_t thread_node_cleaner;
-	
+	char client_ip[16];
 	struct sockaddr_in adr_serv, adr_client;
-	int n, len_inet, serv_socket, clnt_socket;
-	char buffer[MAXCHAR];
+	int serv_socket, *clnt_socket;
+	socklen_t len_inet;
+	pthread_t tid;
 
 	if(argc < 2)
 	{
@@ -100,9 +140,9 @@ int main(int argc, char *argv[])
 
 	pthread_create(&thread_node_server, NULL, &node_server, argv[1]);
 	pthread_create(&thread_node_cleaner, NULL, &node_cleaner, NULL);
-	fprintf( stderr, "main: thread-id: %u\n",(unsigned int) pthread_self());
-	fprintf( stderr, "main: run node_server thread-id: %u\n", (unsigned int)thread_node_server);
-	fprintf( stderr, "main: run node_cleaner thread-id: %u\n", (unsigned int)thread_node_cleaner);
+	printf("main: thread-id: %u\n",(unsigned int) pthread_self());
+	printf("main: run node_server thread-id: %u\n", (unsigned int)thread_node_server);
+	printf("main: run node_cleaner thread-id: %u\n", (unsigned int)thread_node_cleaner);
 	
 	serv_socket = socket(PF_INET, SOCK_STREAM, 0);
 	memset(&adr_serv, 0, sizeof(adr_serv));
@@ -142,14 +182,16 @@ int main(int argc, char *argv[])
 		close(serv_socket);
 		exit(EXIT_FAILURE);
 	}
-	printf("...accept connections on port %d\n", ntohs(adr_serv.sin_port));
-	while(1)
+	printf("server: accept connections on port %d\n", ntohs(adr_serv.sin_port));
+
+	for( ; ; )
 	{
 		len_inet = sizeof(adr_client);
-		if((clnt_socket = accept(serv_socket, (struct sockaddr*)&adr_client,&len_inet)) == -1)
-		{
-			fprintf(stderr,"accept-error\n");
-		}
+		clnt_socket = malloc(sizeof(int));
+		*clnt_socket = accept(serv_socket, (struct sockaddr*)&adr_client,&len_inet);
+		pthread_create( &tid, NULL, &recon_server,clnt_socket );
+		addr_to_string(adr_client.sin_addr.s_addr, client_ip, sizeof(client_ip));
+		printf("server: client %s connected\n",client_ip);
 	}
 	return EXIT_SUCCESS;
 }
